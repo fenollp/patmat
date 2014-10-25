@@ -9,4 +9,7 @@ erl.mk:
 
 clean: clean-ebin
 distclean: clean clean-deps
-debug: debug-app
+
+debug: ERLCFLAGS += +debug_info +export_all
+debug: app
+	erl -pz ebin/ -eval '$(APP):main().' -eval 'halt().'

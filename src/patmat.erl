@@ -7,19 +7,35 @@
 
 -export([ facts/0
         , doc/1
-        , rule/2
-        , rule1/1
+        , rule/2, rule1/1, rule1_/2
         ]).
 
 
 %% API
 
 facts () ->
-    [ {b1, on, b2}
+    [ {b3, color, red}
+    , {b1, on, b2}
     , {b1, on, b3}
     , {b1, color, red}
     , {b2, on, table}
     , {b2, left_of, b3} ].
+
+main () ->
+    S = self(),
+    lists:foreach(
+      fun (Module) ->
+              io:format("\t~p\n", [Module]),
+              R = spawn(?MODULE, Module, [1,S]),
+              timer:sleep(500),
+              [R ! Fact || Fact <- facts()],
+              receive
+                  M -> io:format("-> ~p\n", [M])
+              after 1000 ->
+                      ok
+              end,
+              io:format("\n", [])
+      end, [r, rule, rule1_, r_]).
 
 doc (rule1) ->
     "(defrule find-stack-of-two-blocks-to-the-left-of-a-red-block"
@@ -28,14 +44,110 @@ doc (rule1) ->
         "    (<z> ^color red)"
         " => ( <z> ^on <x> ) )".
 
-%% %% No closure of X,Y
-%% rule (1, Parent, 1) ->
-%%     receive
-%%         {X, on, Y} ->
-%%             rule(1, Parent, 2);
-%%         _ ->
-%%             ignore
-%%     end;
+-define(A, {X, on, Y}).       %% X Y
+-define(B, {Y, left_of, Z}).  %%   Y Z
+-define(C, {Z, color, red}).  %%     Z
+-define(R, {Z, on, X}).
+
+-define(ignore_anything_else
+       , _M ->
+               io:format("Skipped ~p\n", [_M]),
+               r_(Parent, Seen, Closure)).
+
+r (N, Parent) -> r(N, Parent, 1).
+r_ (_N, Parent) -> r_(Parent, [], '').
+p (N, R, Pid) ->
+    Pid ! R,
+    io:format("Rule ~p produced ~p\n", [N,R]).
+
+-record(abc, {x='', y='', z=''}).
+
+r_ (Parent, Seen=[], Closure) ->
+    receive
+        ?A -> r_(Parent, [a], #abc{x=X, y=Y});
+        ?B -> r_(Parent, [b], #abc{y=Y, z=Z});
+        ?C -> r_(Parent, [c], #abc{z=Z});
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen=[a], Closure=#abc{x=X, y=Y}) ->
+    receive
+        ?B -> r_(Parent, Seen++[b], Closure#abc{z=Z});
+        ?C -> r_(Parent, Seen++[c], Closure#abc{z=Z});
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen=[b], Closure=#abc{y=Y, z=Z}) ->
+    receive
+        ?A -> r_(Parent, Seen++[a], Closure#abc{x=X});
+        ?C -> r_(Parent, Seen++[c], Closure);
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen=[c], Closure=#abc{z=Z}) ->
+    receive
+        ?A -> r_(Parent, Seen++[a], Closure#abc{x=X, y=Y});
+        ?B -> r_(Parent, Seen++[b], Closure#abc{y=Y});
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen, Closure=#abc{x=X, y=Y, z=Z})
+  when Seen == [a,b] orelse Seen == [b,a] ->
+    receive
+        ?C -> r_(Parent, Seen++[c], Closure);
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen, Closure=#abc{x=X, y=Y, z=Z})
+  when Seen == [a,c] orelse Seen == [c,a] ->
+    receive
+        ?B -> r_(Parent, Seen++[b], Closure);
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen, Closure=#abc{y=Y, z=Z})
+  when Seen == [b,c] orelse Seen == [c,b] ->
+    receive
+        ?A -> r_(Parent, Seen++[a], Closure#abc{x=X});
+        ?ignore_anything_else
+    end;
+
+r_ (Parent, Seen, #abc{x=X, y=Y, z=Z})
+  when length(Seen) == 3 ->
+    io:format("Seen = ~p\n", [Seen]),%%
+    p(1, ?R, Parent).
+
+
+r (N=1, Parent, 1) ->
+    io:format("In N=1 1\n",[]),%%
+    receive
+        ?A ->
+            r(N, Parent, 2, X, Y);
+        _M ->
+            io:format("Skip ~p\n",[_M]),%%
+            r(N, Parent, 1)
+    end.
+
+r (N=1, Parent, 2, X, Y) ->
+    io:format("In N=1 2 ~p ~p\n",[X,Y]),%%
+    receive
+        ?B ->
+            r(N, Parent, 3, X, Y, Z);
+        _M ->
+            io:format("Skip ~p\n",[_M]),%%
+            r(N, Parent, 2, X, Y)
+    end.
+
+r (N=1, Parent, 3, X, Y, Z) ->
+    io:format("In N=1 2 ~p ~p ~p\n",[X,Y,Z]),%%
+    receive
+        ?C ->
+            p(N, ?R, Parent);
+        _M ->
+            io:format("Skip ~p\n",[_M]),%%
+            r(N, Parent, 3, X, Y, Z)
+    end.
+
 
 production (Rule, Pid) ->
     Pid ! Rule.
@@ -47,87 +159,80 @@ production (Rule, Pid) ->
 -define(alpha(Pattern, Then)
        , receive
              Pattern ->
-                 Then;
-             ?drop_others
+                 Then%;
+             %?drop_others
          end).
 
 rule (1, Parent) ->
-    ?alpha( {X, on, Y}
-          , ?alpha( {Y, left_of, Z}
-                  , ?alpha( {Z, color, red}
-                          , production({Z, on, X}, Parent)))).
- 
+    ?alpha( ?A
+          , ?alpha( ?B
+                  , ?alpha( ?C
+                          , production(?R, Parent)))).
+
 rule1 (Parent) ->
     receive
-        {X, on, Y} ->
+        ?A ->
             receive
-                {Y, left_of, Z} ->
+                ?B ->
                     receive
-                        {Z, color, red} ->
-                            Parent ! {Z, on, X};
-                        _ ->
-                            ignore
-                    end;
-                _ ->
-                    ignore
-            end;
-        _ ->
-            ignore
+                        ?C ->
+                            Parent ! ?R%;
+                        %_ -> ignore
+                    end%;
+                %_ -> ignore
+            end%;
+        %_ -> ignore
     end.
 
--define(A, {X, on, Y}).
--define(B, {Y, left_of, Z}).
--define(C, {Z, color, red}).
--define(R, {Z, on, X}).
 
-rule1_ (Parent) ->
+rule1_ (_, Parent) ->
     receive
         ?A ->
             receive
                 ?B ->
                     ?alpha( ?C , production(?R,Parent)); %% a b c
                 ?C ->
-                    ?alpha( ?B , production(?R,Parent)); %% a c b
-                ?drop_others
+                    ?alpha( ?B , production(?R,Parent))%; %% a c b
+                %?drop_others
             end;
         ?B ->
             receive
                 ?A ->
                     ?alpha( ?C , production(?R,Parent)); %% b a c
                 ?C ->
-                    ?alpha( ?A , production(?R,Parent)); %% b c a
-                ?drop_others
+                    ?alpha( ?A , production(?R,Parent))%; %% b c a
+                %?drop_others
             end;
         ?C ->
             receive
                 ?A ->
                     ?alpha( ?B , production(?R,Parent)); %% c a b
                 ?B ->
-                    ?alpha( ?A , production(?R,Parent)); %% c b a
-                ?drop_others
-            end;
-        ?drop_others
+                    ?alpha( ?A , production(?R,Parent))%; %% c b a
+                %?drop_others
+            end%;
+        %?drop_others
     end.
 
 %% Internals
 
-compile (Alphas, Prod) ->
-    try
-        IDsAssocs = extract_ids(Alphas),
-        Combis = perms(Alphas),
-        {ok, Fun} = '2form'(Combis, IDsAssocs)
-    catch
-        M:E ->
-            io:format("Error: ~p:~p ~p\n", [M,E,erlang:get_stacktrace()]),
-            error
-    end.
+%% compile (Alphas, Prod) ->
+%%     try
+%%         IDsAssocs = assoc(Alphas),
+%%         Combis = perms(Alphas),
+%%         {ok, Fun} = '2form'(Combis, IDsAssocs)
+%%     catch
+%%         M:E ->
+%%             io:format("Error: ~p:~p ~p\n", [M,E,erlang:get_stacktrace()]),
+%%             error
+%%     end.
 
 perms ([]) -> [[]];
 perms (L) ->
     [[H|T] || H <- L,
               T <- perms(L -- [H])].
 
-extract_ids (Alphas) ->
+assoc (Alphas) ->
     IDs = lists:usort(
             lists:foldl(
               fun (Alpha, Acc) ->
