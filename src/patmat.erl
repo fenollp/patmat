@@ -35,7 +35,7 @@ main () ->
                       ok
               end,
               io:format("\n", [])
-      end, [r, rule, rule1_, r_]).
+      end, [rule, rule1_, r_]).
 
 doc (rule1) ->
     "(defrule find-stack-of-two-blocks-to-the-left-of-a-red-block"
@@ -44,10 +44,10 @@ doc (rule1) ->
         "    (<z> ^color red)"
         " => ( <z> ^on <x> ) )".
 
--define(A, {X, on, Y}).       %% X Y
--define(B, {Y, left_of, Z}).  %%   Y Z
--define(C, {Z, color, red}).  %%     Z
--define(R, {Z, on, X}).
+-define(A(X,Y), {X, on, Y}).       %% X Y
+-define(B(Y,Z), {Y, left_of, Z}).  %%   Y Z
+-define(C(Z)  , {Z, color, red}).  %%     Z
+-define(R(X,Z), {Z, on, X}).
 
 -define(ignore_anything_else
        , _M ->
@@ -64,59 +64,63 @@ p (N, R, Pid) ->
 
 r_ (Parent, Seen=[], Closure) ->
     receive
-        ?A -> r_(Parent, [a], #abc{x=X, y=Y});
-        ?B -> r_(Parent, [b], #abc{y=Y, z=Z});
-        ?C -> r_(Parent, [c], #abc{z=Z});
+        ?A(X,Y) -> r_(Parent, [a], #abc{x=X, y=Y});
+        ?B(Y,Z) -> r_(Parent, [b], #abc{y=Y, z=Z});
+        ?C(Z)   -> r_(Parent, [c], #abc{z=Z});
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen=[a], Closure=#abc{x=X, y=Y}) ->
     receive
-        ?B -> r_(Parent, Seen++[b], Closure#abc{z=Z});
-        ?C -> r_(Parent, Seen++[c], Closure#abc{z=Z});
+        ?B(Y,Z) -> r_(Parent, Seen++[b], Closure#abc{z=Z});
+        ?C(Z)   -> r_(Parent, Seen++[c], Closure#abc{z=Z});
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen=[b], Closure=#abc{y=Y, z=Z}) ->
     receive
-        ?A -> r_(Parent, Seen++[a], Closure#abc{x=X});
-        ?C -> r_(Parent, Seen++[c], Closure);
+        ?A(X,Y) -> r_(Parent, Seen++[a], Closure#abc{x=X});
+        ?C(Z)   -> r_(Parent, Seen++[c], Closure);
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen=[c], Closure=#abc{z=Z}) ->
     receive
-        ?A -> r_(Parent, Seen++[a], Closure#abc{x=X, y=Y});
-        ?B -> r_(Parent, Seen++[b], Closure#abc{y=Y});
+        ?A(X,Y) -> r_(Parent, Seen++[a], Closure#abc{x=X, y=Y});
+        ?B(Y,Z) -> r_(Parent, Seen++[b], Closure#abc{y=Y});
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen, Closure=#abc{x=X, y=Y, z=Z})
   when Seen == [a,b] orelse Seen == [b,a] ->
     receive
-        ?C -> r_(Parent, Seen++[c], Closure);
+        ?C(Z)   -> r_(Parent, Seen++[c], Closure);
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen, Closure=#abc{x=X, y=Y, z=Z})
   when Seen == [a,c] orelse Seen == [c,a] ->
     receive
-        ?B -> r_(Parent, Seen++[b], Closure);
+        ?B(Y,Z) -> r_(Parent, Seen++[b], Closure);
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen, Closure=#abc{y=Y, z=Z})
   when Seen == [b,c] orelse Seen == [c,b] ->
     receive
-        ?A -> r_(Parent, Seen++[a], Closure#abc{x=X});
+        ?A(X,Y) -> r_(Parent, Seen++[a], Closure#abc{x=X});
         ?ignore_anything_else
     end;
 
 r_ (Parent, Seen, #abc{x=X, y=Y, z=Z})
   when length(Seen) == 3 ->
     io:format("Seen = ~p\n", [Seen]),%%
-    p(1, ?R, Parent).
+    p(1, ?R(X,Z), Parent).
 
+-define(A, {X, on, Y}).       %% X Y
+-define(B, {Y, left_of, Z}).  %%   Y Z
+-define(C, {Z, color, red}).  %%     Z
+-define(R, {Z, on, X}).
 
 r (N=1, Parent, 1) ->
     io:format("In N=1 1\n",[]),%%

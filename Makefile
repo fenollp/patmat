@@ -12,4 +12,4 @@ distclean: clean clean-deps
 
 debug: ERLCFLAGS += +debug_info +export_all
 debug: app
-	erl -pz ebin/ -eval '$(APP):main().' -eval 'halt().'
+	erl -pz ebin/ -noshell -eval '$(APP):main().' -eval 'halt().'
