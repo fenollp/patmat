@@ -16,8 +16,8 @@
 facts () ->
     [ {b3, color, red}
     , {b1, on, b2}
-    , {b1, on, b3}
-    , {b1, color, red}
+    ] ++ lists:duplicate(200*1000, {b1, on, b3}) ++
+    [ {b1, color, red}
     , {b2, on, table}
     , {b2, left_of, b3} ].
 
@@ -44,6 +44,11 @@ doc (rule1) ->
         "    (<z> ^color red)"
         " => ( <z> ^on <x> ) )".
 
+pinfo () ->
+    Info0 = process_info(self()),
+    Info  = lists:keydelete(messages, 1, Info0),
+    io:format("<- ~p\n", [Info]).
+
 -define(A(X,Y), {X, on, Y}).       %% X Y
 -define(B(Y,Z), {Y, left_of, Z}).  %%   Y Z
 -define(C(Z)  , {Z, color, red}).  %%     Z
@@ -51,14 +56,15 @@ doc (rule1) ->
 
 -define(ignore_anything_else
        , _M ->
-               io:format("Skipped ~p\n", [_M]),
+               %%io:format("Skipped ~p\n", [_M]),
                r_(Parent, Seen, Closure)).
 
 r (N, Parent) -> r(N, Parent, 1).
 r_ (_N, Parent) -> r_(Parent, [], '').
 p (N, R, Pid) ->
-    Pid ! R,
-    io:format("Rule ~p produced ~p\n", [N,R]).
+    %%io:format("Rule ~p produced ~p\n", [N,R]),
+    pinfo(),
+    Pid ! R.
 
 -record(abc, {x='', y='', z=''}).
 
@@ -154,6 +160,7 @@ r (N=1, Parent, 3, X, Y, Z) ->
 
 
 production (Rule, Pid) ->
+    pinfo(),
     Pid ! Rule.
 
 -define(drop_others
