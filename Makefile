@@ -5,10 +5,11 @@ erl.mk:
 
 -include erl.mk
 # Your targets after this line.
-.PHONY: distclean clean debug test
+.PHONY: distclean clean debug
 
 clean: clean-ebin
 distclean: clean clean-deps
+	$(if $(wildcard erl.mk), rm erl.mk)
 
 debug: ERLCFLAGS += +debug_info +export_all
 debug: app
