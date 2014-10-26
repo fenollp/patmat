@@ -1,12 +1,14 @@
 {application, patmat,
  [
-  {description, ""},
+  {description, "An Erlang patmat library"},
   {vsn, "1"},
+  {modules, [
+             patmat
+            ]},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { patmat_app, []}},
   {env, []}
  ]}.
