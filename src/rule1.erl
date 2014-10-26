@@ -11,7 +11,7 @@
         , ast/0 ]).
 
 
--record(abc, {x='', y='', z=''}).
+-record(c, {x='', y='', z=''}).
 
 -define(A(X,Y), {X, on, Y}).       %% X Y
 -define(B(Y,Z), {Y, left_of, Z}).  %%   Y Z
@@ -48,55 +48,55 @@ p (R, Pid) ->
 
 r (Parent, Seen=[], Closure) ->
     receive
-        ?A(X,Y) -> r(Parent, [a], #abc{x=X, y=Y});
-        ?B(Y,Z) -> r(Parent, [b], #abc{y=Y, z=Z});
-        ?C(Z)   -> r(Parent, [c], #abc{z=Z});
+        ?A(X,Y) -> r(Parent, [a], #c{x=X, y=Y});
+        ?B(Y,Z) -> r(Parent, [b], #c{y=Y, z=Z});
+        ?C(Z)   -> r(Parent, [c], #c{z=Z});
         ?ignore_anything_else
     end;
 
-r (Parent, Seen=[a], Closure=#abc{x=X, y=Y}) ->
+r (Parent, Seen=[a], Closure=#c{x=X, y=Y}) ->
     receive
-        ?B(Y,Z) -> r(Parent, Seen++[b], Closure#abc{z=Z});
-        ?C(Z)   -> r(Parent, Seen++[c], Closure#abc{z=Z});
+        ?B(Y,Z) -> r(Parent, Seen++[b], Closure#c{z=Z});
+        ?C(Z)   -> r(Parent, Seen++[c], Closure#c{z=Z});
         ?ignore_anything_else
     end;
 
-r (Parent, Seen=[b], Closure=#abc{y=Y, z=Z}) ->
+r (Parent, Seen=[b], Closure=#c{y=Y, z=Z}) ->
     receive
-        ?A(X,Y) -> r(Parent, Seen++[a], Closure#abc{x=X});
+        ?A(X,Y) -> r(Parent, Seen++[a], Closure#c{x=X});
         ?C(Z)   -> r(Parent, Seen++[c], Closure);
         ?ignore_anything_else
     end;
 
-r (Parent, Seen=[c], Closure=#abc{z=Z}) ->
+r (Parent, Seen=[c], Closure=#c{z=Z}) ->
     receive
-        ?A(X,Y) -> r(Parent, Seen++[a], Closure#abc{x=X, y=Y});
-        ?B(Y,Z) -> r(Parent, Seen++[b], Closure#abc{y=Y});
+        ?A(X,Y) -> r(Parent, Seen++[a], Closure#c{x=X, y=Y});
+        ?B(Y,Z) -> r(Parent, Seen++[b], Closure#c{y=Y});
         ?ignore_anything_else
     end;
 
-r (Parent, Seen, Closure=#abc{x=X, y=Y, z=Z})
+r (Parent, Seen, Closure=#c{x=X, y=Y, z=Z})
   when Seen == [a,b] orelse Seen == [b,a] ->
     receive
         ?C(Z)   -> r(Parent, Seen++[c], Closure);
         ?ignore_anything_else
     end;
 
-r (Parent, Seen, Closure=#abc{x=X, y=Y, z=Z})
+r (Parent, Seen, Closure=#c{x=X, y=Y, z=Z})
   when Seen == [a,c] orelse Seen == [c,a] ->
     receive
         ?B(Y,Z) -> r(Parent, Seen++[b], Closure);
         ?ignore_anything_else
     end;
 
-r (Parent, Seen, Closure=#abc{y=Y, z=Z})
+r (Parent, Seen, Closure=#c{y=Y, z=Z})
   when Seen == [b,c] orelse Seen == [c,b] ->
     receive
-        ?A(X,Y) -> r(Parent, Seen++[a], Closure#abc{x=X});
+        ?A(X,Y) -> r(Parent, Seen++[a], Closure#c{x=X});
         ?ignore_anything_else
     end;
 
-r (Parent, Seen, #abc{x=X, y=Y, z=Z})
+r (Parent, Seen, #c{x=X, y=Y, z=Z})
   when length(Seen) == 3 ->
     io:format("Seen = ~p\n", [Seen]),%%
     p(?R(X,Z), Parent).
