@@ -115,7 +115,10 @@ defrule (Nmax, Patterns, Product) ->
 r_end (Nmax, Patterns, Product) ->
     Bindings = [[${,atom_to_list(ID),$,,lid(ID),$}] || ID <- ids(Patterns)],
     [ "r (Parent, Seen, #c{", ids2fields(Nmax,Patterns), "}) ->\n"
-    , "    patmat:p(?R(", ids2args(Product), "), Parent),\n"
+    , "    Parent ! ?R(", ids2args(Product), "),\n"
+    , "    Info = process_info(self()),\n"
+    %%, "    Info  = lists:keydelete(messages, 1, Info0),\n"
+    , "    io:format(user, \"<- ~p\\n\", [Info]),\n"
     , "    Bindings = [", string:join(Bindings,", "), "],\n"
     , "    io:format(\"Seen = ~p | ~p\\n\", [Seen,Bindings]).%%\n" ].
 
@@ -188,7 +191,7 @@ head (Name) ->
 -define(ignore_anything_else
        , eof -> ok;
          _M  ->
-               r(Parent, Seen, Closure)).
+             r(Parent, Seen, Closure)).
 \n", [?MODULE, Name]).
 
 foot () ->
