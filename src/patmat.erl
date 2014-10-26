@@ -44,10 +44,10 @@ main () ->
       end, [rule1]).
 
 p (R, Pid) ->
-    Pid ! R,
     Info0 = process_info(self()),
     Info  = lists:keydelete(messages, 1, Info0),
-    io:format("<- ~p\n", [Info]).
+    io:format("<- ~p\n", [Info]),
+    Pid ! R.
 
 %% Internals
 

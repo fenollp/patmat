@@ -11,18 +11,18 @@
         , ast/0 ]).
 
 
--record(c, {x='', y='', z=''}).
-
--define(A(X,Y), {X, on, Y}).       %% X Y
--define(B(Y,Z), {Y, left_of, Z}).  %%   Y Z
--define(C(Z)  , {Z, color, red}).  %%     Z
--define(R(X,Z), {Z, on, X}).
-
 -define(ignore_anything_else
        , eof -> ok;
          _M  ->
                %% io:format("Skipped ~p\n", [_M]),
                r(Parent, Seen, Closure)).
+
+-record(c, {x='', y='', z=''}).
+
+-define(P1(X,Y), {X, on, Y}).       %% X Y
+-define(P2(Y,Z), {Y, left_of, Z}).  %%   Y Z
+-define(P3(Z)  , {Z, color, red}).  %%     Z
+-define(R(X,Z), {Z, on, X}).
 
 %% API
 
@@ -41,61 +41,66 @@ ast () ->
     , {{id,z}, on, {id,x}}}.
 
 r (Parent) ->
-    r(Parent, [], '').
+    r(Parent, [], #c{}).
 
-r (Parent, Seen=[], Closure) ->
+r (Parent, Seen, Closure=#c{})
+  when Seen == [] ->
     receive
-        ?A(X,Y) -> r(Parent, [a], #c{x=X, y=Y});
-        ?B(Y,Z) -> r(Parent, [b], #c{y=Y, z=Z});
-        ?C(Z)   -> r(Parent, [c], #c{z=Z});
+        ?P1(X,Y) -> r(Parent, [1|Seen], Closure#c{x=X, y=Y});
+        ?P2(Y,Z) -> r(Parent, [2|Seen], Closure#c{y=Y, z=Z});
+        ?P3(Z)   -> r(Parent, [3|Seen], Closure#c{z=Z});
         ?ignore_anything_else
     end;
 
-r (Parent, Seen=[a], Closure=#c{x=X, y=Y}) ->
+r (Parent, Seen, Closure=#c{x=X, y=Y})
+  when Seen == [1] ->
     receive
-        ?B(Y,Z) -> r(Parent, Seen++[b], Closure#c{z=Z});
-        ?C(Z)   -> r(Parent, Seen++[c], Closure#c{z=Z});
-        ?ignore_anything_else
-    end;
-
-r (Parent, Seen=[b], Closure=#c{y=Y, z=Z}) ->
-    receive
-        ?A(X,Y) -> r(Parent, Seen++[a], Closure#c{x=X});
-        ?C(Z)   -> r(Parent, Seen++[c], Closure);
-        ?ignore_anything_else
-    end;
-
-r (Parent, Seen=[c], Closure=#c{z=Z}) ->
-    receive
-        ?A(X,Y) -> r(Parent, Seen++[a], Closure#c{x=X, y=Y});
-        ?B(Y,Z) -> r(Parent, Seen++[b], Closure#c{y=Y});
-        ?ignore_anything_else
-    end;
-
-r (Parent, Seen, Closure=#c{x=X, y=Y, z=Z})
-  when Seen == [a,b] orelse Seen == [b,a] ->
-    receive
-        ?C(Z)   -> r(Parent, Seen++[c], Closure);
-        ?ignore_anything_else
-    end;
-
-r (Parent, Seen, Closure=#c{x=X, y=Y, z=Z})
-  when Seen == [a,c] orelse Seen == [c,a] ->
-    receive
-        ?B(Y,Z) -> r(Parent, Seen++[b], Closure);
+        ?P2(Y,Z) -> r(Parent, [2|Seen], Closure#c{z=Z});
+        ?P3(Z)   -> r(Parent, [3|Seen], Closure#c{z=Z});
         ?ignore_anything_else
     end;
 
 r (Parent, Seen, Closure=#c{y=Y, z=Z})
-  when Seen == [b,c] orelse Seen == [c,b] ->
+  when Seen == [2] ->
     receive
-        ?A(X,Y) -> r(Parent, Seen++[a], Closure#c{x=X});
+        ?P1(X,Y) -> r(Parent, [1|Seen], Closure#c{x=X});
+        ?P3(Z)   -> r(Parent, [3|Seen], Closure);
         ?ignore_anything_else
     end;
 
-r (Parent, Seen, #c{x=X, y=Y, z=Z})
-  when length(Seen) == 3 ->
-    io:format("Seen = ~p\n", [Seen]),%%
-    patmat:p(?R(X,Z), Parent).
+r (Parent, Seen, Closure=#c{z=Z})
+  when Seen == [3] ->
+    receive
+        ?P1(X,Y) -> r(Parent, [1|Seen], Closure#c{x=X, y=Y});
+        ?P2(Y,Z) -> r(Parent, [2|Seen], Closure#c{y=Y});
+        ?ignore_anything_else
+    end;
+
+r (Parent, Seen, Closure=#c{x=X, y=Y, z=Z})
+  when Seen == [1,2] orelse Seen == [2,1] ->
+    receive
+        ?P3(Z)   -> r(Parent, [3|Seen], Closure);
+        ?ignore_anything_else
+    end;
+
+r (Parent, Seen, Closure=#c{x=X, y=Y, z=Z})
+  when Seen == [1,3] orelse Seen == [3,1] ->
+    receive
+        ?P2(Y,Z) -> r(Parent, [2|Seen], Closure);
+        ?ignore_anything_else
+    end;
+
+r (Parent, Seen, Closure=#c{y=Y, z=Z})
+  when Seen == [2,3] orelse Seen == [3,2] ->
+    receive
+        ?P1(X,Y) -> r(Parent, [1|Seen], Closure#c{x=X});
+        ?ignore_anything_else
+    end;
+
+r (Parent, Seen, #c{x=X, y=Y, z=Z}) ->
+%%  when length(Seen) == 3 ->
+    patmat:p(?R(X,Z), Parent),
+    Bindings = [{x,X}, {y,Y}, {z,Z}],
+    io:format("Seen = ~p | ~p\n", [Seen,Bindings]).%%
 
 %% End of Module.
