@@ -1,6 +1,6 @@
-#patmat • 
+#patmat • [GitHub](//github.com/fenollp/patmat)
 
-Inference engine (as in expert system's).
+Inference engine (as in expert systems).
 
 ```erlang
 facts () ->
