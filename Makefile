@@ -5,12 +5,14 @@ erl.mk:
 
 -include erl.mk
 # Your targets after this line.
-.PHONY: distclean clean debug
+.PHONY: distclean clean debug test
 
 clean: clean-ebin
 distclean: clean clean-deps
 	$(if $(wildcard erl.mk), rm erl.mk)
 
-debug: ERLCFLAGS += +debug_info +export_all
-debug: app
+test: ERLCFLAGS += +debug_info +export_all
+test: app
 	erl -pz ebin/ -noshell -eval '$(APP):main().' -eval 'halt().'
+
+debug: debug-app

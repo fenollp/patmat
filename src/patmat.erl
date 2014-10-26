@@ -7,10 +7,16 @@
 
 -export([ facts/0
         , main/0
+        , p/2
         ]).
 
+-export_type([pattern/0, value/0, id/0]).
 
 %% API
+
+-type pattern() :: {value(), atom(), value()}.
+-type value() :: id() | number() | atom().
+-type id() :: {id, atom()}.
 
 facts () ->
     [ {b3, color, red}
@@ -37,11 +43,12 @@ main () ->
               io:format("\n", [])
       end, [rule1]).
 
-%% Internals
+p (R, Pid) ->
+    Pid ! R,
+    Info0 = process_info(self()),
+    Info  = lists:keydelete(messages, 1, Info0),
+    io:format("<- ~p\n", [Info]).
 
-%% perms ([]) -> [[]];
-%% perms (L) ->
-%%     [[H|T] || H <- L,
-%%               T <- perms(L -- [H])].
+%% Internals
 
 %% End of Module.

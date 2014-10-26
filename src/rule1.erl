@@ -4,7 +4,7 @@
 -module(rule1).
 -compile(nowarn_unused_vars).
 
-%% rule1: 
+%% rule: rule1.
 
 -export([ doc/0
         , r/1
@@ -34,17 +34,14 @@ doc () ->
         " => ( <z> ^on <x> ) )".
 
 ast () ->
-    {rule, [ {{id,x}, on, {id,y}}
-           , {{id,y}, left_of, {id,z}}
-           , {{id,z}, color, red}
-           ], {{id,z}, on, {id,x}}}.
+    {rule, rule1, [ {{id,x}, on, {id,y}}
+                  , {{id,y}, left_of, {id,z}}
+                  , {{id,z}, color, red}
+                  ]
+    , {{id,z}, on, {id,x}}}.
 
-r (Parent) -> r(Parent, [], '').
-p (R, Pid) ->
-    Pid ! R,
-    Info0 = process_info(self()),
-    Info  = lists:keydelete(messages, 1, Info0),
-    io:format("<- ~p\n", [Info]).
+r (Parent) ->
+    r(Parent, [], '').
 
 r (Parent, Seen=[], Closure) ->
     receive
@@ -99,6 +96,6 @@ r (Parent, Seen, Closure=#c{y=Y, z=Z})
 r (Parent, Seen, #c{x=X, y=Y, z=Z})
   when length(Seen) == 3 ->
     io:format("Seen = ~p\n", [Seen]),%%
-    p(?R(X,Z), Parent).
+    patmat:p(?R(X,Z), Parent).
 
 %% End of Module.
