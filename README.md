@@ -13,6 +13,22 @@ facts () ->
 ```
 
 Broadcasts each fact from `facts()` to listening rules.
+Each rule is a message-receiving process that empties its mailbox asap.
+
+
+## Discussion
+
+Processes with empty inbox may be free, but broadcasting the whole facts db
+each time a new fact is added looks disgusting.
+
+A dual aspect to this implementation would be to throw away broadcasting
+and instead do concurrent reads of the facts db.
+So basically `s/receive/case of/g` rules code.
+
+But then distribution gets dirty (Centralised db? Then how to scale?).
+At least messages & rules-as-processes profits from
+the VM's great distribution capabilities.
+
 
 ## Rules implementation (by asc. chron.)
 
