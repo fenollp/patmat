@@ -2,9 +2,8 @@
  [
   {description, "An Erlang patmat library"},
   {vsn, "1"},
-  {modules, [
-             patmat
-            ]},
+  {modules, [ patmat
+            , patmat_gen ]},
   {registered, []},
   {applications, [
                   kernel,

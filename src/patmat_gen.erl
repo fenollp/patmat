@@ -3,14 +3,27 @@
 %% -*- coding: utf-8 -*-
 -module(patmat_gen).
 
-%% patmat_gen: 
+%% patmat_gen: generate Erlang code for a rule.
 
--export([ ast2erlang/1 ]).
+-export([ file/1, file/2 ]).
 
+
+-define(sep, "  \t").
+-record(rule, {name, patterns, product}).
 
 %% API
 
-ast2erlang ({rule, Name, Patterns, Product} = Ast) ->
+file (Ast) ->
+    file(".", Ast).
+file (Dir, Ast = #rule{name = Name}) ->
+    Erlang = ast2erlang(Ast),
+    Filename = filename:join(Dir, atom_to_list(Name)++".erl"),
+    ok = file:write_file(Filename, Erlang),
+    Filename.
+
+%% Internals
+
+ast2erlang (Ast = #rule{name=Name, patterns=Patterns, product=Product}) ->
     IDs  = ids(Patterns),
     Nmax = lists:seq(1, length(Patterns)),
     [ head(Name)
@@ -22,10 +35,6 @@ ast2erlang ({rule, Name, Patterns, Product} = Ast) ->
     , defhat()
     , defrule(Nmax, Patterns, Product)
     , foot() ].
-
--define(sep, "  \t").
-
-%% Internals
 
 %% Create a record “c” with lIDs as fields
 defrecord (IDs) ->
